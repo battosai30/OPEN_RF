@@ -47,7 +47,7 @@ WriteReg(CC1101_IOCFG2, (GDO2_cfg & 0b00111111) | ((GDO2_INV & 1)<<6));
 }
 
 
-void WritePATable(uint8_t* PaTab, uint8_t Size){
+void WritePATable(uint8_t PaTab[], uint8_t Size){
 
 WriteBurstReg(CC1101_PATABLE,PaTab,Size);
 
@@ -74,7 +74,7 @@ void WriteReg(uint8_t addr, uint8_t value)
 }
 
 
-void WriteBurstReg(uint8_t addr, uint8_t *buffer, uint8_t num)
+void WriteBurstReg(uint8_t addr, uint8_t buffer[], uint8_t num)
 {
 	if (addr<=0x2F || addr >=0x3E) {	
     digitalWrite(SS_PIN, LOW);
@@ -84,8 +84,7 @@ void WriteBurstReg(uint8_t addr, uint8_t *buffer, uint8_t num)
     for (uint16_t i = 0; i < num; i++)
  	{
         SPI.transfer(buffer[i]);
-		delayMicroseconds(1);
-    }
+	}
 	
     digitalWrite(SS_PIN, HIGH);
 	

@@ -18,7 +18,7 @@ void Initialisation(void) {
 reset();
 
 RF1AIFG &= ~BIT4;           // Clear a pending interrupt
-RF1AIE |= BIT4;             // Enable the interrupt
+//RF1AIE |= BIT4;             // Enable the interrupt
 
 }
 
@@ -31,7 +31,8 @@ uint8_t Strobe(uint8_t strobe)
     if ((strobe == 0xBD) || ((strobe >= RF_SRES) && (strobe <= RF_SNOP)))
     {
         ENTER_CRITICAL_SECTION(int_state);
-
+ RF1AIFCTL1 &= ~(RFSTATIFG);
+  while (!(RF1AIFCTL1 & RFINSTRIFG)) ;
         /* // Clear the Status read flag
         RF1AIFCTL1 &= ~(RFSTATIFG);
 
@@ -66,9 +67,10 @@ uint8_t Strobe(uint8_t strobe)
         statusByte = RF1ASTATB;
         while (!(RF1AIFCTL1 & RFSTATIFG)) ; */
 		
-		RF1AINSTRB = strobe;
-		
+		RF1AINSTR1B = strobe;
 		statusByte = RF1ASTATB;
+		//while (!(RF1AIFCTL1 & RFSTATIFG));
+		
         EXIT_CRITICAL_SECTION(int_state);
     }
     return statusByte;
@@ -113,7 +115,7 @@ uint8_t ReadReg(uint8_t addr)
     ENTER_CRITICAL_SECTION(int_state);
 
     RF1AINSTR1B = (addr | RF_REGRD);
-    x = RF1ADOUT1B;
+    x = RF1ADOUTB;
 
     EXIT_CRITICAL_SECTION(int_state);
 
@@ -137,7 +139,7 @@ void WriteReg(uint8_t addr, uint8_t value)
                                                    // instruction
 
     RF1AINSTRW = ((addr | RF_REGWR) << 8) + value; // Send address + Instruction
-    while (!(RFDINIFG & RF1AIFCTL1)) ;
+    while (!(RF1AIFCTL1 & RFDINIFG )) ;
 
     i = RF1ADOUTB;                                 // Reset RFDOUTIFG flag which contains status
                                                    // byte
@@ -151,7 +153,7 @@ void WriteReg(uint8_t addr, uint8_t value)
 // @param       none
 // @return      none
 // *************************************************************************************************
-void ReadBurstReg(uint8_t addr, uint8_t *buffer, uint8_t count)
+void ReadBurstReg(uint8_t addr, uint8_t* buffer, uint8_t count)
 {
     unsigned int i;
     unsigned int int_state;
@@ -164,10 +166,11 @@ void ReadBurstReg(uint8_t addr, uint8_t *buffer, uint8_t count)
     for (i = 0; i < (count - 1); i++)
     {
         while (!(RFDOUTIFG & RF1AIFCTL1)) ;  // Wait for the Radio Core to update the RF1ADOUTB reg
-        buffer[i] = RF1ADOUT1B;              // Read DOUT from Radio Core + clears RFDOUTIFG
-        // Also initiates auo-read for next DOUT byte
+       
+	   buffer[i] = RF1ADOUT1B;              // Read DOUT from Radio Core + clears RFDOUTIFG
+        // Also initiates auto-read for next DOUT byte
     }
-    buffer[count - 1] = RF1ADOUT0B;          // Store the last DOUT from Radio Core
+    buffer[count - 1] = RF1ADOUTB;          // Store the last DOUT from Radio Core
 
     EXIT_CRITICAL_SECTION(int_state);
 }
@@ -237,8 +240,8 @@ void WriteBurstReg(uint8_t addr, uint8_t *buffer, uint8_t count)
 
     EXIT_CRITICAL_SECTION(int_state);
 } */
-void WritePATable(uint8_t* PaTab, uint8_t Size){
-
+void WritePATable(uint8_t PaTab[], uint8_t Size){
+WriteBurstReg(RF_PATABWR,PaTab,Size);
 }
 
 #endif

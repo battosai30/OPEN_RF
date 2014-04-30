@@ -159,3 +159,28 @@ Modify this file is not recommended
 /****************************************************************/
 
 #define FOSC 26e6 // oscillator frequency
+
+/****************************************************************/
+#ifndef TRUE
+#define TRUE                 1
+#endif
+
+#ifndef FALSE
+#define FALSE                0
+#endif
+
+#define TXOFF_MODE_IDLE      0
+#define TXOFF_MODE_FSTXON    1
+#define TXOFF_MODE_STAYINTX  2
+#define TXOFF_MODE_RX        3
+
+#define RXOFF_MODE_IDLE      0
+#define RXOFF_MODE_FSTXON    1
+#define RXOFF_MODE_STAYINRX  3
+#define RXOFF_MODE_TX        2
+
+#define MODULATION_2FSK      0
+#define MODULATION_GFSK      1
+#define MODULATION_ASK_OOK   3
+#define MODULATION_4FSK      4
+#define MODULATION_MSK       7

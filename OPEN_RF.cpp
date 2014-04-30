@@ -29,10 +29,15 @@ void OPEN_RF::FillTXFIFO(uint8_t* Data, uint8_t Count){
 
 void OPEN_RF::GetRXFIFO(uint8_t* Data, uint8_t Count){
 
+ReadBurstReg(CC1101_RXFIFO,Data,Count);
+
 }
 
 void OPEN_RF::SetRX(void){
+Strobe(CC1101_SIDLE);
+Strobe(CC1101_SFRX);
 Strobe(CC1101_SRX);
+
 }
 
 void OPEN_RF::SetTX(void){
@@ -56,10 +61,12 @@ Initialisation();
 #else
 Initialisation(pin);
 #endif
-	
+
 LoadConfigSettings(RF_USERCONFIG,sizeof(RF_USERCONFIG)); // load user config in RF_usercfg.h
 WritePATable(PaTable,8);   //CC1101 PATABLE config in RF_usercfg.h
-
+InitInternalVariables();
+FlushTX();
+FlushRX();
 }
 
 void OPEN_RF::Powerdown(void) {
@@ -75,14 +82,109 @@ return ReadReg(addr);
 
 }
 
-void OPEN_RF::WriteRegister(uint8_t addr, uint8_t value){
+void OPEN_RF::ConfigureSyncWord(uint16_t SyncWord){
 
-return WriteReg(addr, value);
+ WriteReg(CC1101_SYNC0, SyncWord & 0xFF);
+ WriteReg(CC1101_SYNC1, SyncWord>>8);
 
 }
 
-void OPEN_RF::SetAdress(uint8_t _Adress, uint8_t Broadcat){
+void OPEN_RF::RXModeOff(uint16_t Mode){
 
+byte ActualReg = ReadReg(CC1101_MCSM1) & 0xF3;
+
+WriteReg(CC1101_MCSM1, ActualReg | ((Mode & 0x3)<<2));
+
+}
+
+void OPEN_RF::TXModeOff(uint16_t Mode){
+
+byte ActualReg = ReadReg(CC1101_MCSM1) & 0xFC;
+
+WriteReg(CC1101_MCSM1, ActualReg | (Mode & 0x3));
+}
+
+void OPEN_RF::SetModulation(uint8_t Modulation){
+
+byte ActualReg = ReadReg(CC1101_MDMCFG2) & 0x8F;
+
+WriteReg(CC1101_MDMCFG2, ActualReg | (Modulation & 0x7)<<4);
+
+}
+
+void OPEN_RF::SetRate(uint32_t Rate){
+
+
+
+}
+
+void OPEN_RF::SetSyncMode(uint8_t SyncMode){
+
+byte ActualReg = ReadReg(CC1101_MDMCFG2) & 0xF8;
+
+WriteReg(CC1101_MDMCFG2, ActualReg | (SyncMode & 0x7));
+
+}
+
+void OPEN_RF::EnableManchesterEnc(uint8_t Enable){
+
+byte ActualReg = ReadReg(CC1101_MDMCFG2);
+
+if(Enable) WriteReg(CC1101_MDMCFG2, ActualReg | BIT3);
+else WriteReg(CC1101_MDMCFG2, ActualReg & ~BIT3);
+
+}
+
+void OPEN_RF::SetDeviation(uint8_t Deviation){
+
+
+}
+
+void OPEN_RF::EnableAdressCheck(uint8_t Mode){
+
+byte ActualReg = ReadReg(CC1101_PKTCTRL1) & 0xFC;
+
+WriteReg(CC1101_PKTCTRL1, ActualReg | (Mode & 0x3));
+
+_AdressCheck = Mode;
+
+
+}
+
+void OPEN_RF::SetPacketLenght(uint8_t Length){
+WriteReg(CC1101_PKTLEN,Length);
+}
+
+void OPEN_RF::PacketLenghtMode(uint8_t Mode){
+
+byte ActualReg = ReadReg(CC1101_PKTCTRL0) & 0xFC;
+
+WriteReg(CC1101_PKTCTRL0, ActualReg | (Mode & 0x03));
+
+
+}
+
+void OPEN_RF::EnableDataWhitening(uint8_t Enable){
+
+byte ActualReg = ReadReg(CC1101_PKTCTRL0);
+
+if(Enable) WriteReg(CC1101_PKTCTRL0, ActualReg | BIT6);
+else WriteReg(CC1101_PKTCTRL0, ActualReg & ~BIT6);
+
+}
+
+void OPEN_RF::EnableCRC(uint8_t Enable){
+
+byte ActualReg = ReadReg(CC1101_PKTCTRL0);
+
+if(Enable) WriteReg(CC1101_PKTCTRL0, ActualReg | BIT2);
+else WriteReg(CC1101_PKTCTRL0, ActualReg & ~BIT2);
+
+}
+
+void OPEN_RF::SetAdress(uint8_t _Adress){
+
+//Strobe(CC1101_SIDLE);
 WriteReg(CC1101_ADDR,_Adress);
 
 }
@@ -107,7 +209,7 @@ WriteBurstReg(CC1101_FREQ2,Freq_array,3);
 }
 
 void OPEN_RF::SetChannel(uint8_t Channel){
-
+Strobe(CC1101_SIDLE);
 WriteReg(CC1101_CHANNR,Channel);
 
 }
@@ -128,23 +230,23 @@ return ReadReg(CC1101_RSSI);
 
 uint8_t OPEN_RF::GetLQI(){
 
-return ReadReg(CC1101_LQI) & 0x7F;
+return ReadReg(CC1101_LQI) ;//& 0x7F;
 
 }
 
 uint8_t OPEN_RF::BytesAvailableInTXFIFO(){
 
-return Strobe(CC1101_SNOP) & 0xF;
+return ReadReg(CC1101_TXBYTES) & 0x7F;
 
 }
 
 uint8_t OPEN_RF::BytesAvailableInRXFIFO(){
 
-return Strobe(CC1101_SNOP | READ_SINGLE) & 0xF;
+return ReadReg(CC1101_RXBYTES) & 0x7F;
+
 }
 
-
-uint8_t OPEN_RF::GetState() {
+uint8_t OPEN_RF::GetState(void) {
 
 uint8_t value1,value2;
 value1 = ReadReg(CC1101_MARCSTATE) & 0x1F;
@@ -158,18 +260,17 @@ return value1;
 
 }
 
-
 void OPEN_RF::FlushTX(void){
+Strobe(CC1101_SIDLE);
 Strobe(CC1101_SFTX);
 }
 
 void OPEN_RF::FlushRX(void){
+Strobe(CC1101_SIDLE);
 Strobe(CC1101_SFRX);
 }
 
-
-void OPEN_RF::LoadConfigSettings(const uint8_t ConfigArray[][2], uint8_t Size) 
-{
+void OPEN_RF::LoadConfigSettings(const uint8_t ConfigArray[][2], uint8_t Size){
 uint8_t i = Size / (2*sizeof(uint8_t));
 
 for(uint8_t y=0;y<i;y++) {
@@ -178,61 +279,76 @@ WriteReg(ConfigArray[y][0], ConfigArray[y][1]);
 
 }
 
+void OPEN_RF::SendData(uint8_t _txBuffer[],uint8_t size_){
 
-void OPEN_RF::SendData(uint8_t *txBuffer,uint8_t size)
-{
-	
-	WriteReg(CC1101_TXFIFO,size);
-	WriteBurstReg(CC1101_TXFIFO,txBuffer,size);			//write data to send
+    Strobe(CC1101_SIDLE);	
+	WriteReg(CC1101_TXFIFO,size_);
+	WriteBurstReg(CC1101_TXFIFO,_txBuffer,size_);			//write data to send
 	Strobe(CC1101_STX);									//start send
     while (GetState()>1);	// whileSending
 
 }
 
+void OPEN_RF::SendDataTo(uint8_t Addr, uint8_t *_txBuffer,uint8_t size_){
 
-void OPEN_RF::SetReceive(void)
-{
-	Strobe(CC1101_SRX);
+    Strobe(CC1101_SIDLE);	
+	WriteReg(CC1101_TXFIFO,size_);
+	WriteReg(CC1101_TXFIFO,Addr);
+	WriteBurstReg(CC1101_TXFIFO,_txBuffer,size_);			//write data to send
+	Strobe(CC1101_STX);									//start send
+    while (GetState()>1);	// whileSending
+
 }
 
+uint8_t OPEN_RF::StrobeCmd(uint8_t cmd){
 
-uint8_t OPEN_RF::CheckReceiveFlag(void)
-{
-	/* if(digitalRead(GDO0))			//receive data
-	{
-		while (digitalRead(GDO0));
-		return 1;
-	}
-	else							// no data
-	{
-		return 0;
-	} */
+   return Strobe(cmd);	
+	
 }
 
+void OPEN_RF::WriteBurstRegister(uint8_t _addr, uint8_t _buffer[], uint8_t _size) {
+	WriteBurstReg(_addr,_buffer,_size);
+}
 
-uint8_t OPEN_RF::ReceiveData(uint8_t *rxBuffer)
-{
+void OPEN_RF::ReadBurstRegister(uint8_t _addr, uint8_t _buffer[], uint8_t _size) {
+	ReadBurstReg(_addr,_buffer,_size);
+}
+
+uint8_t OPEN_RF::ReceiveData(uint8_t* rxBuffer){
+	
 	uint8_t size;
 	uint8_t status[2];
 
-	//if(SpiReadStatus(CC1101_RXBYTES) & BYTES_IN_RXFIFO)
-	if(1)
+	if(BytesAvailableInRXFIFO())
 	{
 		size=ReadReg(CC1101_RXFIFO);
-		ReadBurstReg(CC1101_RXFIFO,rxBuffer,size);
-		ReadBurstReg(CC1101_RXFIFO,status,2);
-		Strobe(CC1101_SFRX);
+		
+		 if(_AdressCheck) {
+		byte Addr = ReadReg(CC1101_RXFIFO); 
+		size--;
+		} 
+		
+		 ReadBurstReg(CC1101_RXFIFO,rxBuffer,size);
+		 
+		 if(_AppendStatus) {
+		 ReadBurstReg(CC1101_RXFIFO,status,2);
+		 }
+		 
 		return size;
 	}
 	else
 	{
-		Strobe(CC1101_SFRX);
 		return 0;
 	}
 	
 }
 
+void OPEN_RF::InitInternalVariables(void) {
 
+_AdressCheck = ReadReg(CC1101_PKTCTRL1) & 0xF3 ;
+_AppendStatus = (ReadReg(CC1101_PKTCTRL1) & 0xFB)>>2 ;
+
+}
 
 
 
