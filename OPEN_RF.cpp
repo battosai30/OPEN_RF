@@ -33,6 +33,14 @@ ReadBurstReg(CC1101_RXFIFO,Data,Count);
 
 }
 
+void OPEN_RF::SetAppendStatus(uint8_t mode){
+
+byte ActualReg = ReadReg(CC1101_PKTCTRL1) & ~BIT3;
+WriteReg(CC1101_PKTCTRL1, ActualReg | (mode & 1)<<2);
+_AppendStatus = mode & 1;
+
+}
+
 void OPEN_RF::SetRX(void){
 Strobe(CC1101_SIDLE);
 Strobe(CC1101_SFRX);
@@ -292,7 +300,7 @@ void OPEN_RF::SendData(uint8_t _txBuffer[],uint8_t size_){
 void OPEN_RF::SendDataTo(uint8_t Addr, uint8_t *_txBuffer,uint8_t size_){
 
     Strobe(CC1101_SIDLE);	
-	WriteReg(CC1101_TXFIFO,size_);
+	WriteReg(CC1101_TXFIFO,size_+1);
 	WriteReg(CC1101_TXFIFO,Addr);
 	WriteBurstReg(CC1101_TXFIFO,_txBuffer,size_);			//write data to send
 	Strobe(CC1101_STX);									//start send
@@ -323,7 +331,7 @@ uint8_t OPEN_RF::ReceiveData(uint8_t* rxBuffer){
 	{
 		size=ReadReg(CC1101_RXFIFO);
 		
-		 if(_AdressCheck) {
+		   if(_AdressCheck) {
 		byte Addr = ReadReg(CC1101_RXFIFO); 
 		size--;
 		} 
@@ -332,7 +340,7 @@ uint8_t OPEN_RF::ReceiveData(uint8_t* rxBuffer){
 		 
 		 if(_AppendStatus) {
 		 ReadBurstReg(CC1101_RXFIFO,status,2);
-		 }
+		 } 
 		 
 		return size;
 	}
@@ -345,8 +353,8 @@ uint8_t OPEN_RF::ReceiveData(uint8_t* rxBuffer){
 
 void OPEN_RF::InitInternalVariables(void) {
 
-_AdressCheck = ReadReg(CC1101_PKTCTRL1) & 0xF3 ;
-_AppendStatus = (ReadReg(CC1101_PKTCTRL1) & 0xFB)>>2 ;
+_AdressCheck = ReadReg(CC1101_PKTCTRL1) & 0x03 ;
+_AppendStatus = (ReadReg(CC1101_PKTCTRL1) & 0x04)>>2 ;
 
 }
 

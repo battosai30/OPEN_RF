@@ -75,10 +75,12 @@ class OPEN_RF
 		void SetAdress(uint8_t _Adress, uint8_t Broadcat); // configure radio address and broadcast
 		void ConfigurePacket(uint8_t Preambule, uint8_t CRC_ENABLE, uint8_t LENGH_CONFIG, uint8_t PacketLenght, uint16_t SYNCWORD, uint8_t Adress_Check); // configure packet format
 		uint32_t  GetFreq(void); // get the programmed frequency 
+		void SetAppendStatus(uint8_t mode);
 		
-		void SendDataTo(uint8_t Addr, uint8_t *_txBuffer,uint8_t size_);
-		uint8_t ReceiveData(uint8_t *rxBuffer); // receive data
+		void SendDataTo(uint8_t Addr, uint8_t *_txBuffer,uint8_t size_); // send data to specific address
 		void SendData(uint8_t *txBuffer, uint8_t size); // Send data
+		uint8_t ReceiveData(uint8_t *rxBuffer); // receive data
+		
 		
 		void LoadConfigSettings(const uint8_t ConfigArray[][2], uint8_t Size); // this function allow to configure CC1101 with a single array
 		uint8_t StrobeCmd(uint8_t cmd); 
