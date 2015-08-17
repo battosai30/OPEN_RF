@@ -35,7 +35,7 @@ ReadBurstReg(CC1101_RXFIFO,Data,Count);
 
 void OPEN_RF::SetAppendStatus(uint8_t mode){
 
-byte ActualReg = ReadReg(CC1101_PKTCTRL1) & ~BIT3;
+byte ActualReg = ReadReg(CC1101_PKTCTRL1) & ~0x08;
 WriteReg(CC1101_PKTCTRL1, ActualReg | (mode & 1)<<2);
 _AppendStatus = mode & 1;
 
@@ -54,6 +54,7 @@ Strobe(CC1101_STX);
 
 void OPEN_RF::SetIdle(void){
 Strobe(CC1101_SIDLE);
+while(GetState()!=1);
 }
 
 void OPEN_RF::Init(void) {
@@ -116,7 +117,7 @@ void OPEN_RF::SetModulation(uint8_t Modulation){
 
 byte ActualReg = ReadReg(CC1101_MDMCFG2) & 0x8F;
 
-WriteReg(CC1101_MDMCFG2, ActualReg | (Modulation & 0x7)<<4);
+WriteReg(CC1101_MDMCFG2, ActualReg | ((Modulation & 0x7)<<4));
 
 }
 
@@ -130,7 +131,7 @@ void OPEN_RF::SetSyncMode(uint8_t SyncMode){
 
 byte ActualReg = ReadReg(CC1101_MDMCFG2) & 0xF8;
 
-WriteReg(CC1101_MDMCFG2, ActualReg | (SyncMode & 0x7));
+WriteReg(CC1101_MDMCFG2, ActualReg | (SyncMode & 0x07));
 
 }
 
@@ -138,8 +139,8 @@ void OPEN_RF::EnableManchesterEnc(uint8_t Enable){
 
 byte ActualReg = ReadReg(CC1101_MDMCFG2);
 
-if(Enable) WriteReg(CC1101_MDMCFG2, ActualReg | BIT3);
-else WriteReg(CC1101_MDMCFG2, ActualReg & ~BIT3);
+if(Enable) WriteReg(CC1101_MDMCFG2, ActualReg | 0x08);
+else WriteReg(CC1101_MDMCFG2, ActualReg & ~0x08);
 
 }
 
@@ -153,8 +154,8 @@ void OPEN_RF::EnableAdressCheck(uint8_t Mode){
 byte ActualReg = ReadReg(CC1101_PKTCTRL1) & 0xFC;
 
 WriteReg(CC1101_PKTCTRL1, ActualReg | (Mode & 0x3));
-
-_AdressCheck = Mode;
+ 
+_AdressCheck = Mode & 0x3;
 
 
 }
@@ -176,8 +177,8 @@ void OPEN_RF::EnableDataWhitening(uint8_t Enable){
 
 byte ActualReg = ReadReg(CC1101_PKTCTRL0);
 
-if(Enable) WriteReg(CC1101_PKTCTRL0, ActualReg | BIT6);
-else WriteReg(CC1101_PKTCTRL0, ActualReg & ~BIT6);
+if(Enable) WriteReg(CC1101_PKTCTRL0, ActualReg | 0x40);
+else WriteReg(CC1101_PKTCTRL0, ActualReg & ~0x40);
 
 }
 
@@ -185,8 +186,8 @@ void OPEN_RF::EnableCRC(uint8_t Enable){
 
 byte ActualReg = ReadReg(CC1101_PKTCTRL0);
 
-if(Enable) WriteReg(CC1101_PKTCTRL0, ActualReg | BIT2);
-else WriteReg(CC1101_PKTCTRL0, ActualReg & ~BIT2);
+if(Enable) WriteReg(CC1101_PKTCTRL0, ActualReg | 0x04);
+else WriteReg(CC1101_PKTCTRL0, ActualReg & ~0x04);
 
 }
 

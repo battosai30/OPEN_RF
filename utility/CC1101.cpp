@@ -20,7 +20,12 @@ void Initialisation(uint16_t pin){
 
 void reset (void)
 {
-
+   
+   digitalWrite(SS_PIN, LOW);
+	delay(1);
+	digitalWrite(SS_PIN,HIGH);
+	delay(1);
+	digitalWrite(SS_PIN, LOW);
 	Strobe(CC1101_SRES);
 	digitalWrite(SS_PIN,HIGH);
 	delay(1);
@@ -98,6 +103,7 @@ uint8_t Strobe(uint8_t strobe)
 	digitalWrite(SS_PIN, LOW);
 	
     while(READMISOPIN);
+	
 	uint8_t value=SPI.transfer(strobe);
 	
 	digitalWrite(SS_PIN, HIGH);
@@ -109,7 +115,7 @@ uint8_t Strobe(uint8_t strobe)
 
 uint8_t ReadReg(uint8_t addr) 
 {
-    if(addr>=0x30 && addr<=0x3D) addr |= READ_BURST;
+    if(addr>=0x30 && addr<=0x3D) addr |= READ_BURST; // to read status register burst bit must be set
 	else addr|= READ_SINGLE;
 	
 	digitalWrite(SS_PIN,LOW);
